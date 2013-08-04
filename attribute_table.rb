@@ -20,7 +20,8 @@ class AttributeTable
         :env_message_domains_match,
         :has_dkim,
         :has_domain_key,
-#        :last_reverse_lookup_match,
+        :reverse_lookup_match,
+        :bad_encoding
 #        :all_reverse_lookups_match
     ]
 

@@ -7,11 +7,11 @@ require_relative 'mbox'
 require_relative 'attribute_table'
 require_relative 'util'
 
-MAX_NUM_HAM = 5
-MAX_NUM_SPAM = 5
+MAX_NUM_HAM = 100
+MAX_NUM_SPAM = 100
 mboxes = YAML::load(File.open('manifest.yml'))
 
-table = AttributeTable.new('classification.txt')
+table = AttributeTable.new('data/classification.txt')
 
 ham = Corpus.new
 num_ham = 0
