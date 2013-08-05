@@ -22,7 +22,8 @@ class AttributeTable
         :has_domain_key,
         :num_recipients,
         :reverse_lookup_match,
-        :bad_encoding
+        :bad_encoding,
+        :bayes_score
 #        :all_reverse_lookups_match
     ]
 
@@ -41,6 +42,8 @@ class AttributeTable
                 row << s[col]
             end
             row << is_spam
+            row << mbox.filename
+            row << message.subject.to_s if message.subject
             @table << row
         end
         self
@@ -50,7 +53,7 @@ class AttributeTable
     def write(delim = "\t", header = true)
         File.open(@outfile, 'w') do |file|
             if header
-                file.puts MBOX_COLUMNS.push("is_spam").join(delim)
+                file.puts MBOX_COLUMNS.push("is_spam").push("Filename").push("Subject").join(delim)
             end
             @table.each do |row|
                 file.puts row.join(delim)

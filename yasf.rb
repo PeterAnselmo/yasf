@@ -8,7 +8,7 @@ require_relative 'attribute_table'
 require_relative 'util'
 
 MAX_NUM_HAM = 500
-MAX_NUM_SPAM = 250
+MAX_NUM_SPAM = 500
 mboxes = YAML::load(File.open('manifest.yml'))
 
 table = AttributeTable.new('data/classification.txt')
@@ -27,13 +27,6 @@ mboxes["ham"].each do |mbox_file|
     num_ham += mbox.messages.size
 end
 info "Parsed #{num_ham} ham messages"
-info "Computing Word Counts..."
-ham.compute_word_counts
-info "Identified #{ham.words.size} unique words"
-#ham_words.sort{|a,b| b[1] <=> a[1]}.each do |word, count|
-#    puts "#{word}:#{count}"
-#end
-#exit
 
 spam = Corpus.new
 num_spam = 0
@@ -48,9 +41,6 @@ mboxes["spam"].each do |mbox_file|
     num_spam += mbox.messages.size
 end
 info "Parsed #{num_spam} spam messages"
-info "Computing Word Counts..."
-spam.compute_word_counts
-info "Identified #{spam.words.size} unique words"
 
 info "Writing classification matrix to #{table.outfile}..."
 table.write

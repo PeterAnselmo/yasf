@@ -3,7 +3,7 @@ require 'set'
 
 PROB_FILE = 'data/spam_probs.txt'
 WORD_REGEX = Regexp.new(/\w{3,}/)
-NUM_WORDS = 10
+NUM_WORDS = 15
 
 
 email_words = Set.new
@@ -27,7 +27,7 @@ end
 products = 1.0
 sums = 1.0
 interesting_words.each do |word|
-    puts word.inspect
+    #puts word.inspect
     products *= word[1]
     sums *= (1.0-word[1])
 end

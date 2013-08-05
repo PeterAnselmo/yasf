@@ -105,6 +105,12 @@ module Mail
                 @spam[:bad_encoding] = 1
             end
 
+            IO.popen('./bayes-score.rb','r+') do |pipe|
+                pipe.puts raw_source
+                pipe.close_write
+                @spam[:bayes_score] = pipe.read.chomp
+            end
+
             self
         end
 
@@ -116,9 +122,11 @@ end
 
 class Mbox
     attr_reader :messages
+    attr_reader :filename
 
     def initialize(path, max = nil, compute_spam = true)
         @messages = Array.new
+        @filename = path
         raw_message = ''
         num_read = 0
         IO.foreach(path) do |line|
@@ -127,7 +135,7 @@ class Mbox
                     if raw_message != ''
                         message = Mail.new(raw_message)
 
-                        unless message.subject.include? 'FOLDER INTERNAL DATA'
+                        unless message.subject && message.subject.include?('FOLDER INTERNAL DATA')
                             num_read += 1
                             info "#{num_read} read from this file"
 
@@ -148,7 +156,7 @@ class Mbox
 
         if raw_message != ''
             message = Mail.new(raw_message)
-            unless message.subject.include? 'FOLDER INTERNAL DATA'
+            unless message.subject && message.subject.include?('FOLDER INTERNAL DATA')
                 num_read += 1
                 info "#{num_read} read from this file"
 
@@ -166,7 +174,6 @@ class Corpus
     @@word_regex = Regexp.new(/\w{3,}/)
     attr_reader :words
     attr_accessor :mboxes
-    attr_accessr :num_messages
 
 
     def initialize
