@@ -48,7 +48,9 @@ module Mail
                 end
 
                 @spam[:recipients] = Array.new
-                (received.is_a?(Mail::Field)? [received] : received).each do |recipient|
+                recipients_array = (received.is_a?(Mail::Field)? [received] : received)
+                @spam[:num_recipients] = recipients_array.size
+                recipients_array.each do |recipient|
                     match = @@recipient_regex.match(recipient.to_s)
                     if match && match.size == 3
                         @spam[:recipients] << [match[1], match[2]]
@@ -115,7 +117,7 @@ end
 class Mbox
     attr_reader :messages
 
-    def initialize(path, max = nil)
+    def initialize(path, max = nil, compute_spam = true)
         @messages = Array.new
         raw_message = ''
         num_read = 0
@@ -129,7 +131,7 @@ class Mbox
                             num_read += 1
                             info "#{num_read} read from this file"
 
-                            message.compute_spam_scores
+                            message.compute_spam_scores if compute_spam
 
                             @messages << message
                             return self if max && num_read > max
@@ -150,7 +152,7 @@ class Mbox
                 num_read += 1
                 info "#{num_read} read from this file"
 
-                message.compute_spam_scores
+                message.compute_spam_scores if compute_spam
 
                 @messages << message
             end
@@ -164,10 +166,12 @@ class Corpus
     @@word_regex = Regexp.new(/\w{3,}/)
     attr_reader :words
     attr_accessor :mboxes
+    attr_accessr :num_messages
 
 
     def initialize
         @words = Hash.new(0)
+        
         @mboxes = Array.new
         self
     end
