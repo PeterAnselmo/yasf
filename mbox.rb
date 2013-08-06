@@ -13,6 +13,8 @@ module Mail
         @@dom_key_sig = Regexp.new(/^DomainKey-Signature:/)
         @@recipient_regex = Regexp.new(/from .*\(?[HEL|ELH]O ([^()]*)\)? \(.*?\[?(\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3})\]?\)/)
         @@recipient_regex2 = Regexp.new(/from (.*) \(.*?\[?(\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3})\]?.*?\)/)
+        @@py_spf = "pyspf-2.0.8/spf.py"
+        @@spf_regex = Regexp.new(/^\('(.*?)',.*\)/)
 
         attr_accessor :spam
 
@@ -24,25 +26,25 @@ module Mail
             @spam = Hash.new
 
             begin
-                @spam[:bad_encoding] = 0
+                @spam[:bad_encoding] = false
 
-                @spam[:env_domain] = get_domain(envelope_from)
+                @spam[:env_domain] = get_domain(return_path)
                 @spam[:from_domain] = get_domain(from.last)
 
-                @spam[:env_message_domains_match] = 0
+                @spam[:env_message_domains_match] = false
                 if @spam[:env_domain] && @spam[:from_domain] && (@spam[:env_domain] == @spam[:from_domain])
-                    @spam[:env_message_domains_match] = 1
+                    @spam[:env_message_domains_match] = true
                 end
 
-                @spam[:has_link] = (@@link_regex.match(self.body.to_s) != nil) ? 1 : 0
-                @spam[:has_html_link] = (@@html_link_regex.match(body.to_s) != nil) ? 1 : 0
+                @spam[:has_link] = (@@link_regex.match(self.body.to_s) != nil)
+                @spam[:has_html_link] = (@@html_link_regex.match(body.to_s) != nil)
                 @spam[:links] = body.to_s.scan(@@link_regex)
                 @spam[:num_links] = @spam[:links].size
 
-                @spam[:links_match_from] = 1
+                @spam[:links_match_from] = true
                 @spam[:links].each do |link|
                     if get_domain(link) != @spam[:from_domain]
-                        @spam[:links_match_from] = 0
+                        @spam[:links_match_from] = false
                         break
                     end
                 end
@@ -66,14 +68,22 @@ module Mail
                 end
 
                 recip = @spam[:recipients].first #reverse cron, first is last
+                recip_domain = get_domain(recip[0])
                 begin
                     reverse_domain = get_domain(Resolv.getname(recip[1]))
                 rescue Resolv::ResolvError => e
                     reverse_domain = nil
                 end
-                @spam[:reverse_lookup_match] = (reverse_domain == get_domain(recip[0])) ? 1 : 0
+                @spam[:env_reverse_lookup_match] = (reverse_domain == @spam[:env_domain])
+                @spam[:recip_reverse_lookup_match] = (reverse_domain == recip_domain)
+
                 if DEBUGGING
-                    debug "Domain: #{recip[0]} | IP: #{recip[1]} | Reverse: #{reverse_domain} | Match? #{@spam[:reverse_lookup_match]}"
+                    debug "Domain: #{recip_domain} | IP: #{recip[1]} | Reverse: #{reverse_domain} | Match? #{@spam[:recip_reverse_lookup_match]}"
+                end
+
+                @spam[:recip_message_domains_match] = false
+                if recip_domain && @spam[:from_domain] && (recip_domain == @spam[:from_domain])
+                    @spam[:recip_message_domains_match] = true
                 end
 
                 #@spam[:all_reverse_lookups_match] = 1
@@ -97,12 +107,22 @@ module Mail
                 #end
 
 
-                @spam[:has_dkim] = (@@dkim_sig.match(header.to_s)) ? 1 : 0
-                @spam[:has_domain_key] = (@@dom_key_sig.match(header.to_s)) ? 1 : 0
+                @spam[:has_dkim] = (@@dkim_sig.match(header.to_s) != nil)
+                @spam[:has_domain_key] = (@@dom_key_sig.match(header.to_s) != nil)
+
+                spf_command = "#{@@py_spf} #{recip[1]} #{return_path} #{recip[0]}"
+                debug "SPF COMMAND: #{spf_command}"
+                raw_spf_result = `#{spf_command}`
+                
+                if spf_match = @@spf_regex.match(raw_spf_result)
+                    @spam[:spf_result] = spf_match[1]
+                else
+                    @spam[:spf_result] = nil
+                end
 
             rescue Mail::UnknownEncodingType => e
                 warn e.message
-                @spam[:bad_encoding] = 1
+                @spam[:bad_encoding] = true
             end
 
             IO.popen('./bayes-score.rb','r+') do |pipe|
@@ -130,6 +150,7 @@ class Mbox
         raw_message = ''
         num_read = 0
         IO.foreach(path) do |line|
+            line.encode!('UTF-8', 'UTF-8', :invalid => :replace)
             begin
                 if line.match(/^From /)
                     if raw_message != ''

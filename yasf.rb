@@ -11,7 +11,8 @@ MAX_NUM_HAM = 500
 MAX_NUM_SPAM = 500
 mboxes = YAML::load(File.open('manifest.yml'))
 
-table = AttributeTable.new('data/classification.txt')
+table = AttributeTable.new('data/classification.csv')
+table.write_header
 
 ham = Corpus.new
 num_ham = 0
@@ -20,7 +21,7 @@ mboxes["ham"].each do |mbox_file|
     info "Parsing ham mbox file: #{mbox_file}"
 
     mbox = Mbox.new(mbox_file, MAX_NUM_HAM-num_ham)
-    table.read_mbox(mbox, 0)
+    table.write_mbox(mbox, false)
 
     ham.mboxes << mbox
 
@@ -35,15 +36,14 @@ mboxes["spam"].each do |mbox_file|
     info "Parsing spam mbox file: #{mbox_file}"
 
     mbox = Mbox.new(mbox_file, MAX_NUM_SPAM-num_spam)
-    table.read_mbox(mbox, 1)
+    table.write_mbox(mbox, true)
 
     spam.mboxes << mbox
     num_spam += mbox.messages.size
 end
 info "Parsed #{num_spam} spam messages"
+table.close
 
-info "Writing classification matrix to #{table.outfile}..."
-table.write
 info "Complete."
 
 

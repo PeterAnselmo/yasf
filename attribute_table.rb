@@ -5,6 +5,7 @@ require_relative 'util.rb'
 class AttributeTable
     attr_reader :table
     attr_accessor :outfile
+    attr_accessor :delim
 
     #this will be a 2d array, our classificaton matrix
     @table
@@ -18,10 +19,13 @@ class AttributeTable
         :num_links,
         :links_match_from,
         :env_message_domains_match,
+        :recip_message_domains_match,
+        :spf_result,
         :has_dkim,
         :has_domain_key,
         :num_recipients,
-        :reverse_lookup_match,
+        :env_reverse_lookup_match,
+        :recip_reverse_lookup_match,
         :bad_encoding,
         :bayes_score
 #        :all_reverse_lookups_match
@@ -30,10 +34,16 @@ class AttributeTable
     def initialize(new_outfile=nil)
         @table = Array.new
         @outfile = new_outfile if new_outfile
+        @fh = File.open(@outfile, 'w')
+        @delim = ","
         self
     end
 
-    def read_mbox(mbox, is_spam)
+    def write_header
+        @fh.puts MBOX_COLUMNS.dup.push("is_spam").push("Filename").push("Subject").join(@delim)
+    end
+
+    def write_mbox(mbox, is_spam)
         mbox.messages.each do |message|
 
             s = message.spam
@@ -43,22 +53,15 @@ class AttributeTable
             end
             row << is_spam
             row << mbox.filename
-            row << message.subject.to_s if message.subject
-            @table << row
+            row << "\"#{message.subject.to_s.gsub(/[,'"]/,' ')}\""
+
+            @fh.puts row.join(@delim)
         end
         self
     end
 
-
-    def write(delim = "\t", header = true)
-        File.open(@outfile, 'w') do |file|
-            if header
-                file.puts MBOX_COLUMNS.push("is_spam").push("Filename").push("Subject").join(delim)
-            end
-            @table.each do |row|
-                file.puts row.join(delim)
-            end
-        end
+    def close
+        @fh.close unless @fh.nil?
     end
 
 end
