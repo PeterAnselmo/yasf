@@ -8,7 +8,7 @@ NUM_WORDS = 15
 
 email_words = Set.new
 ARGF.each do |line|
-    line.encode!('UTF-8', 'UTF-8', :invalid => :replace)
+    line.encode!('UTF-8', {:invalid => :replace, :undef=>:replace, :replace=>'|?|'})
     line.scan(WORD_REGEX).each do |word|
         email_words << word
     end
@@ -27,9 +27,9 @@ end
 products = 1.0
 sums = 1.0
 interesting_words.each do |word|
-    #puts word.inspect
+    puts "#{word[0]}=>#{word[1].round(4)}"
     products *= word[1]
     sums *= (1.0-word[1])
 end
 
-puts (products / (products + sums)).round(4)
+puts "\nTotal Spam Probability: #{(products / (products + sums)).round(4)}"

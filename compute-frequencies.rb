@@ -6,8 +6,8 @@ require 'dnsruby'
 require_relative 'util'
 
 DEBUGGING = false
-MAX_NUM_HAM = 5000
-MAX_NUM_SPAM = 5000
+MAX_NUM_HAM = 10000
+MAX_NUM_SPAM = 10000
 WORD_REGEX = Regexp.new(/\w{3,}/)
 mboxes = YAML::load(File.open('manifest.yml'))
 
@@ -18,7 +18,7 @@ mboxes["ham"].each do |mbox_file|
     #info "Parsing ham mbox file: #{mbox_file}"
 
     IO.foreach(mbox_file) do |line|
-        line.encode!('UTF-8', 'UTF-8', :invalid => :replace)
+        line.force_encoding("ISO-8859-1").encode!('UTF-8', {:invalid => :replace, :undef=>:replace, :replace=>'|?|'})
         line.scan(WORD_REGEX).each do |word|
             ham_words[word] += 1
         end
@@ -42,7 +42,7 @@ mboxes["spam"].each do |mbox_file|
     #info "Parsing spam mbox file: #{mbox_file}"
 
     IO.foreach(mbox_file) do |line|
-        line.encode!('UTF-8', 'UTF-8', :invalid => :replace)
+        line.force_encoding("ISO-8859-1").encode!('UTF-8', {:invalid => :replace, :undef=>:replace, :replace=>'|?|'})
         line.scan(WORD_REGEX).each do |word|
             spam_words[word] += 1
         end
@@ -72,8 +72,8 @@ spam_probs = Hash.new()
         ham_freq = [ham_count.to_f/num_ham, 1.0].min
         spam_freq = [spam_count.to_f/num_spam, 1.0].min
         spam_prob = spam_freq / (ham_freq + spam_freq)
-        spam_prob = [spam_prob,0.999].min
-        spam_prob = [spam_prob,0.001].max
+        spam_prob = [spam_prob,0.9999].min
+        spam_prob = [spam_prob,0.0001].max
         spam_probs[word] = spam_prob
         if DEBUGGING
             puts "word: #{word}"
