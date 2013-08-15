@@ -1,10 +1,15 @@
 #!/usr/bin/ruby
 require 'set'
+require 'optparse'
 
 PROB_FILE = 'data/spam_probs.txt'
-WORD_REGEX = Regexp.new(/\w{3,}/)
+WORD_REGEX = Regexp.new(/[\w!]{3,}/)
 NUM_WORDS = 15
 
+options = {}
+OptionParser.new do |opts|
+    opts.on('-v', '--verbose', 'Verbose'){|v| options[:verbose] = v}
+end.parse!
 
 email_words = Set.new
 ARGF.each do |line|
@@ -27,9 +32,11 @@ end
 products = 1.0
 sums = 1.0
 interesting_words.each do |word|
-    puts "#{word[0]}=>#{word[1].round(4)}"
+    if options[:verbose]
+        puts "#{word[0]}=>#{word[1].round(4)}"
+    end
     products *= word[1]
     sums *= (1.0-word[1])
 end
 
-puts "\nTotal Spam Probability: #{(products / (products + sums)).round(4)}"
+puts (products / (products + sums)).round(4)

@@ -7,8 +7,8 @@ require_relative 'mbox'
 require_relative 'attribute_table'
 require_relative 'util'
 
-MAX_NUM_HAM = 50
-MAX_NUM_SPAM = 50
+MAX_NUM_HAM = 5
+MAX_NUM_SPAM = 5
 mboxes = YAML::load(File.open('manifest.yml'))
 
 table = AttributeTable.new('data/classification.csv')
